@@ -1,4 +1,4 @@
-# 🧮 Material Calcs
+# 🧮 Material Calcs Legacy
 
 A high-fidelity calculator built with **Material 3 Expressive** design.
 
@@ -12,3 +12,6 @@ A high-fidelity calculator built with **Material 3 Expressive** design.
 1. Open the site.
 2. Type any equation into the top bar (e.g., `y = sin(x)`).
 3. Switch to Dark Mode using the moon icon for a sleek OLED look.
+
+
+Original Version which was created in 2024.
