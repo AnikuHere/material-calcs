@@ -4,97 +4,182 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Material Calcs</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6750A4">
-    
     <link href="https://cdn.jsdelivr.net/npm/beercss@3.5.1/dist/cdn/beer.min.css" rel="stylesheet">
     <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.5.1/dist/cdn/beer.min.js"></script>
     <script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
-
     <style>
-        :root { --primary: #6750A4; --round-xl: 28px; }
-        body { background-color: #fbf8fd; transition: background 0.4s ease; }
-        .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); border-radius: var(--round-xl); }
-        #calculator { height: 400px; border-radius: var(--round-xl); overflow: hidden; border: 1px solid #e0e0e0; }
-        .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        button { border-radius: 16px; transition: 0.2s; }
-        button:active { transform: scale(0.92); border-radius: 30px; }
-        .op { background: var(--primary) !important; color: white !important; border-radius: 30px; }
+        :root { --primary: #6750A4; --round: 28px; }
+        body { transition: background 0.3s ease; }
+        .page { display: none; }
+        .active-page { display: block; animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        #graph-panel { height: 500px; border-radius: var(--round); overflow: hidden; border: 1px solid #ddd; }
+        .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .history-item { border-bottom: 1px solid #eee; padding: 10px; }
+        #ai-warning { display: none; margin-top: 10px; }
     </style>
 </head>
 <body class="light">
 
-    <header class="p2 surface-container">
-        <nav>
+    <nav class="left drawer scroll" id="main-drawer">
+        <header>
             <i class="extra">calculate</i>
-            <h4 class="max center-align">Material Calcs</h4>
-            <button class="circle transparent" onclick="toggleTheme()">
-                <i id="t-icon">dark_mode</i>
+            <h5>Material Calcs</h5>
+        </header>
+        <a onclick="showPage('page-calc')"><i>calculate</i><span>Normal Calculator</span></a>
+        <a onclick="showPage('page-graph')"><i>show_chart</i><span>Graphing</span></a>
+        <a onclick="showPage('page-currency')"><i>payments</i><span>Currency</span></a>
+        <a onclick="showPage('page-ai')"><i>auto_awesome</i><span>Gemini AI</span></a>
+        <a onclick="showPage('page-history')"><i>history</i><span>History</span></a>
+        <hr>
+        <div class="row p2 mt-auto">
+            <i id="mode-icon">light_mode</i>
+            <div class="max">Dark Mode</div>
+            <label class="switch"><input type="checkbox" onchange="toggleDarkMode()"><span></span></label>
+        </div>
+    </nav>
+
+    <header class="primary p2">
+        <nav>
+            <button class="circle transparent" onclick="ui('#main-drawer')">
+                <i>menu</i>
             </button>
+            <h5 class="max center-align">Material Calcs</h5>
         </nav>
     </header>
 
     <main class="responsive p2">
-        <div class="grid">
-            <div class="s12 m8">
-                <div class="field large prefix round extra fill margin">
-                    <i>terminal</i>
-                    <input type="text" id="omni" placeholder="y = x^2 or 100 USD to EUR" oninput="handleInput(this.value)">
+        
+        <div id="page-calc" class="page active-page">
+            <article class="round extra p2 surface-variant">
+                <div class="field label border round extra">
+                    <input type="text" id="calc-display" readonly value="0" class="right-align extra">
+                    <label>Display</label>
                 </div>
-                <div id="calculator"></div>
-            </div>
+                <div class="keypad">
+                    <button class="fill round" onclick="pressNum('7')">7</button>
+                    <button class="fill round" onclick="pressNum('8')">8</button>
+                    <button class="fill round" onclick="pressNum('9')">9</button>
+                    <button class="primary round" onclick="pressNum('/')">÷</button>
+                    <button class="fill round" onclick="pressNum('4')">4</button>
+                    <button class="fill round" onclick="pressNum('5')">5</button>
+                    <button class="fill round" onclick="pressNum('6')">6</button>
+                    <button class="primary round" onclick="pressNum('*')">×</button>
+                    <button class="fill round" onclick="pressNum('1')">1</button>
+                    <button class="fill round" onclick="pressNum('2')">2</button>
+                    <button class="fill round" onclick="pressNum('3')">3</button>
+                    <button class="primary round" onclick="runCalc()">=</button>
+                    <button class="fill round s2" onclick="pressNum('0')">0</button>
+                    <button class="error round" onclick="clearCalc()">C</button>
+                </div>
+            </article>
+        </div>
 
-            <div class="s12 m4">
-                <article class="glass p2 mb2">
-                    <div class="row"><i>payments</i><h6>Currency</h6></div>
-                    <div class="field label border round extra">
-                        <input type="number" id="amt" value="1" oninput="convert()">
-                        <label>Amount</label>
-                    </div>
-                    <h3 id="cur-res" class="center-align bold primary-text">€0.94</h3>
-                </article>
-
-                <article class="glass p2">
-                    <div class="keypad">
-                        <button class="fill" onclick="press('7')">7</button>
-                        <button class="fill" onclick="press('8')">8</button>
-                        <button class="fill" onclick="press('9')">9</button>
-                        <button class="op" onclick="press('/')">÷</button>
-                        <button class="fill" onclick="press('1')">1</button>
-                        <button class="fill" onclick="press('2')">2</button>
-                        <button class="fill" onclick="press('3')">3</button>
-                        <button class="op" onclick="solve()">=</button>
-                    </div>
-                </article>
+        <div id="page-graph" class="page">
+            <div id="graph-panel"></div>
+            <div class="field label border round extra mt2">
+                <input type="text" oninput="plot(this.value)" placeholder="y = sin(x)">
+                <label>Plot Equation</label>
             </div>
         </div>
+
+        <div id="page-ai" class="page">
+            <article class="round extra p2 border">
+                <h6>Gemini Assistant</h6>
+                <p class="small-text italic grey-text">Powered by Gemini 2.0 Flash</p>
+                <div id="ai-chat" class="p2 mb1 scroll" style="height: 200px; background: #eee; border-radius: 12px;"></div>
+                <div id="ai-warning" class="chip error mb1">
+                    AI Functionality is limited due to MaterialCalcs running on a free plan. We sincerely apologize.
+                </div>
+                <div class="field border round extra">
+                    <input type="text" id="ai-query" placeholder="Ask a complex problem...">
+                    <button class="transparent circle" onclick="askGemini()"><i>send</i></button>
+                </div>
+            </article>
+        </div>
+
+        <div id="page-history" class="page">
+            <article class="round extra p2 border">
+                <h6>Recent Calculations</h6>
+                <div id="history-list"></div>
+                <button class="extend border round extra mt2" onclick="clearHistory()">Clear History</button>
+            </article>
+        </div>
+
     </main>
 
     <script>
-        const calc = Desmos.GraphingCalculator(document.getElementById('calculator'), {expressions:false, settingsMenu:false});
-        function vibrate() { if(navigator.vibrate) navigator.vibrate(20); }
-        
-        function handleInput(v) {
-            if(v.includes('y') || v.includes('x')) {
-                calc.setExpression({id:'q', latex: v});
-                document.body.style.setProperty('--primary', '#6750A4');
+        // --- Navigation ---
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            document.getElementById(id).classList.add('active-page');
+            ui('#main-drawer'); // Close drawer
+        }
+
+        // --- Dark Mode ---
+        function toggleDarkMode() {
+            const mode = ui("mode") == "dark" ? "light" : "dark";
+            ui("mode", mode);
+            document.getElementById('mode-icon').innerText = mode == 'dark' ? 'dark_mode' : 'light_mode';
+        }
+
+        // --- Normal Calculator & History ---
+        let calcDisplay = document.getElementById('calc-display');
+        function pressNum(v) { 
+            if(calcDisplay.value === "0") calcDisplay.value = v;
+            else calcDisplay.value += v;
+        }
+        function clearCalc() { calcDisplay.value = "0"; }
+        function runCalc() {
+            try {
+                let res = eval(calcDisplay.value);
+                saveToHistory(calcDisplay.value + " = " + res);
+                calcDisplay.value = res;
+            } catch(e) { calcDisplay.value = "Error"; }
+        }
+
+        function saveToHistory(entry) {
+            let history = JSON.parse(localStorage.getItem('m_history') || "[]");
+            history.unshift(entry);
+            localStorage.setItem('m_history', JSON.stringify(history.slice(0, 10)));
+            loadHistory();
+        }
+        function loadHistory() {
+            let history = JSON.parse(localStorage.getItem('m_history') || "[]");
+            document.getElementById('history-list').innerHTML = history.map(h => `<div class="history-item">${h}</div>`).join('') || "No history yet.";
+        }
+        function clearHistory() { localStorage.removeItem('m_history'); loadHistory(); }
+
+        // --- Desmos Graphing ---
+        const calc = Desmos.GraphingCalculator(document.getElementById('graph-panel'), {expressions:false});
+        function plot(v) { calc.setExpression({id:'p1', latex:v}); }
+
+        // --- Gemini AI ---
+        async function askGemini() {
+            const query = document.getElementById('ai-query').value;
+            const chat = document.getElementById('ai-chat');
+            const warning = document.getElementById('ai-warning');
+            
+            warning.style.display = "block"; // Show pop-up warning
+            chat.innerHTML += `<b>You:</b> ${query}<br>`;
+            
+            const key = "AIzaSyAFgJtwWtvt4l-RZxOg1UmC6y_JBfdlqNA";
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: query }] }] })
+                });
+                const data = await response.json();
+                const reply = data.candidates[0].content.parts[0].text;
+                chat.innerHTML += `<b>Gemini:</b> ${reply}<br><hr>`;
+            } catch(e) {
+                chat.innerHTML += `<span class="error-text">API error. Please check quota.</span><br>`;
             }
         }
 
-        function toggleTheme() {
-            vibrate();
-            const isDark = ui('theme') == 'dark';
-            ui('theme', isDark ? 'light' : 'dark');
-            document.getElementById('t-icon').innerText = isDark ? 'dark_mode' : 'light_mode';
-        }
-
-        function convert() {
-            const a = document.getElementById('amt').value;
-            document.getElementById('cur-res').innerText = '€' + (a * 0.94).toFixed(2);
-        }
-
-        function press(v) { vibrate(); document.getElementById('omni').value += v; }
-        function solve() { vibrate(); try { document.getElementById('omni').value = eval(document.getElementById('omni').value); } catch(e) {} }
+        // Initial Load
+        window.onload = loadHistory;
     </script>
 </body>
 </html>
