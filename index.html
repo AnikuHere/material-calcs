@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Material Calcs</title>
     
     <link href="https://cdn.jsdelivr.net/npm/beercss@3.5.1/dist/cdn/beer.min.css" rel="stylesheet">
@@ -12,24 +12,28 @@
     <style>
         :root { --primary: #6750A4; --round: 28px; }
         
-        /* Fixed layout for Desmos */
-        #graph-box { height: 500px; border-radius: var(--round); overflow: hidden; border: 1px solid #ddd; margin-top: 1rem; }
+        /* Navigation & Logic */
+        main > div { display: none; padding-top: 80px; }
+        main > div.active { display: block; }
+
+        /* Calculator Grid */
+        .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+        .keypad button { height: 70px; border-radius: 16px; font-size: 1.5rem; border: none; }
+        .keypad button:active { border-radius: 35px; transform: scale(0.95); }
         
-        /* Page switching logic */
-        main > div { display: none; }
-        main > div.active { display: block; animation: fadeIn 0.4s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Calculator Keys */
-        .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 1rem; }
-        .keypad button { height: 64px; border-radius: 16px; font-size: 1.2rem; }
-        .keypad button:active { border-radius: 32px; transform: scale(0.95); }
-
-        /* AI Section */
-        #ai-log { height: 200px; overflow-y: auto; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 16px; margin-bottom: 1rem; }
+        /* Desktop/Mobile specific Desmos height */
+        #graph-box { height: 60vh; border-radius: var(--round); overflow: hidden; border: 1px solid #ddd; }
+        
+        /* Drawer fix */
+        .drawer { z-index: 200; }
+        .overlay { z-index: 150; }
+        
+        .ai-box { height: 250px; overflow-y: auto; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 20px; }
     </style>
 </head>
 <body class="light">
+
+    <div class="overlay" onclick="ui('#nav-drawer')"></div>
 
     <nav class="left drawer scroll" id="nav-drawer">
         <header>
@@ -43,23 +47,22 @@
         <div class="divider"></div>
         <div class="padding">
             <label class="switch">
-                <input type="checkbox" onchange="toggleDark()">
+                <input type="checkbox" id="dark-toggle" onchange="toggleDark()">
                 <span>Dark Mode</span>
             </label>
         </div>
     </nav>
 
-    <header class="fixed primary">
+    <header class="fixed primary shadow">
         <nav>
             <button class="circle transparent" onclick="ui('#nav-drawer')">
-                <i>menu</i>
-            </button>
-            <h5 class="max center-align">Material Calcs</h5>
+                <i>calculate</i> </button>
+            <h5 class="max" onclick="ui('#nav-drawer')">Material Calcs</h5>
         </nav>
     </header>
 
     <main class="responsive p2">
-        <div class="space"></div> <div id="calc" class="active">
+        <div id="calc" class="active">
             <div class="field label border round extra large fill">
                 <input type="text" id="display" readonly value="0" class="right-align">
                 <label>Display</label>
@@ -68,11 +71,11 @@
                 <button class="fill" onclick="press('7')">7</button>
                 <button class="fill" onclick="press('8')">8</button>
                 <button class="fill" onclick="press('9')">9</button>
-                <button class="secondary" onclick="press('/')">/</button>
+                <button class="secondary" onclick="press('/')">÷</button>
                 <button class="fill" onclick="press('4')">4</button>
                 <button class="fill" onclick="press('5')">5</button>
                 <button class="fill" onclick="press('6')">6</button>
-                <button class="secondary" onclick="press('*')">*</button>
+                <button class="secondary" onclick="press('*')">×</button>
                 <button class="fill" onclick="press('1')">1</button>
                 <button class="fill" onclick="press('2')">2</button>
                 <button class="fill" onclick="press('3')">3</button>
@@ -85,20 +88,20 @@
         <div id="graph">
             <div id="graph-box"></div>
             <div class="field label border round extra margin">
-                <input type="text" oninput="plot(this.value)" placeholder="y = sin(x)">
+                <input type="text" id="graph-input" oninput="plot(this.value)" placeholder="y = x^2">
                 <label>Equation</label>
             </div>
         </div>
 
         <div id="ai">
             <article class="round extra border">
-                <div id="ai-log">Welcome to Gemini Assistant.</div>
-                <div class="row padding error-text italic small-text">
-                    <i>info</i>
+                <div id="ai-log" class="ai-box">Chat started...</div>
+                <div class="row padding error-text small-text italic">
+                    <i>warning</i>
                     <span>AI Functionality is limited due to MaterialCalcs running on a free plan. We sincerely apologize.</span>
                 </div>
                 <div class="field border round extra m1">
-                    <input type="text" id="ai-query" placeholder="Ask anything...">
+                    <input type="text" id="ai-query" placeholder="Ask Gemini...">
                     <button class="circle transparent" onclick="askGemini()"><i>send</i></button>
                 </div>
             </article>
@@ -106,62 +109,56 @@
 
         <div id="history">
             <article class="round extra surface-variant">
-                <h5>Calculation History</h5>
+                <div class="row"><h6>Recent Calculations</h6><button class="transparent circle" onclick="clearHistory()"><i>delete</i></button></div>
                 <div id="hist-list"></div>
-                <button class="extend border round extra mt1" onclick="clearHistory()">Clear All</button>
             </article>
         </div>
     </main>
 
     <script>
-        // NAVIGATION & THEME
-        function showPage(pageId) {
-            document.querySelectorAll('main > div').forEach(div => div.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            ui('#nav-drawer'); // This triggers the drawer to close (retract)
+        // NAVIGATION
+        function showPage(id) {
+            document.querySelectorAll('main > div').forEach(d => d.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            ui('#nav-drawer'); // This closes the menu after selection
         }
 
         function toggleDark() {
             const isDark = ui('mode') === 'dark';
             ui('mode', isDark ? 'light' : 'dark');
-            navigator.vibrate(20);
+            navigator.vibrate(30);
         }
 
-        // CALCULATOR LOGIC
-        const display = document.getElementById('display');
-        function press(v) { 
-            if(display.value === "0") display.value = v; 
-            else display.value += v;
-            navigator.vibrate(10);
-        }
-        function reset() { display.value = "0"; }
+        // CALC
+        const d = document.getElementById('display');
+        function press(v) { if(d.value==="0") d.value=v; else d.value+=v; navigator.vibrate(10); }
+        function reset() { d.value="0"; }
         function solve() {
             try {
-                const res = eval(display.value);
-                save(display.value + " = " + res);
-                display.value = res;
-            } catch(e) { display.value = "Error"; }
+                const res = eval(d.value);
+                save(d.value + " = " + res);
+                d.value = res;
+            } catch(e) { d.value="Error"; }
         }
 
-        // HISTORY LOGIC
-        function save(val) {
-            let h = JSON.parse(localStorage.getItem('calcs_h') || "[]");
-            h.unshift(val);
-            localStorage.setItem('calcs_h', JSON.stringify(h.slice(0, 15)));
+        // HISTORY
+        function save(v) {
+            let h = JSON.parse(localStorage.getItem('mc_h') || "[]");
+            h.unshift(v);
+            localStorage.setItem('mc_h', JSON.stringify(h.slice(0,10)));
             renderH();
         }
         function renderH() {
-            let h = JSON.parse(localStorage.getItem('calcs_h') || "[]");
-            document.getElementById('hist-list').innerHTML = h.map(i => `<p class='p1 border-bottom'>${i}</p>`).join('') || "<p class='p1'>No history yet.</p>";
+            let h = JSON.parse(localStorage.getItem('mc_h') || "[]");
+            document.getElementById('hist-list').innerHTML = h.map(i => `<p class='p1 border-bottom'>${i}</p>`).join('') || "<p class='p1'>No history.</p>";
         }
-        function clearHistory() { localStorage.removeItem('calcs_h'); renderH(); }
+        function clearHistory() { localStorage.removeItem('mc_h'); renderH(); }
 
-        // GRAPHING (DESMOS)
-        const gDiv = document.getElementById('graph-box');
-        const calc = Desmos.GraphingCalculator(gDiv, {expressions:false});
-        function plot(v) { calc.setExpression({id:'p1', latex:v}); }
+        // GRAPHING
+        const calc = Desmos.GraphingCalculator(document.getElementById('graph-box'), {expressions:false});
+        function plot(v) { calc.setExpression({id:'p', latex:v}); }
 
-        // GEMINI AI
+        // GEMINI
         async function askGemini() {
             const q = document.getElementById('ai-query').value;
             const log = document.getElementById('ai-log');
@@ -174,10 +171,9 @@
                     body: JSON.stringify({ contents: [{ parts: [{ text: q }] }] })
                 });
                 const data = await r.json();
-                const res = data.candidates[0].content.parts[0].text;
-                log.innerHTML += `<p><b>Gemini:</b> ${res}</p><hr>`;
+                log.innerHTML += `<p><b>Gemini:</b> ${data.candidates[0].content.parts[0].text}</p><hr>`;
                 log.scrollTop = log.scrollHeight;
-            } catch(e) { log.innerHTML += `<p class='error-text'>API Quota reached.</p>`; }
+            } catch(e) { log.innerHTML += `<p class='error-text'>Error: Quota or Key issue.</p>`; }
         }
 
         window.onload = renderH;
